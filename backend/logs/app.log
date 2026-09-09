@@ -1,0 +1,263 @@
+2026-08-31 22:02:51,094 | ERROR | app.services.translation | Translation failed: Error code: 404 - {'error': {'message': 'The model `llama-3.3-70b-versatile` does not exist or you do not have access to it.', 'type': 'invalid_request_error', 'code': 'model_not_found'}}
+Traceback (most recent call last):
+  File "C:\Users\PMLS\Desktop\hackathon project\backend\app\services\translation.py", line 80, in translate_text
+    return _translate_with_groq(text, "Roman Urdu", target_name)
+  File "C:\Users\PMLS\Desktop\hackathon project\backend\app\services\translation.py", line 58, in _translate_with_groq
+    response = client.chat.completions.create(
+  File "C:\Users\PMLS\Desktop\hackathon project\backend\venv\lib\site-packages\groq\resources\chat\completions.py", line 287, in create
+    return self._post(
+  File "C:\Users\PMLS\Desktop\hackathon project\backend\venv\lib\site-packages\groq\_base_client.py", line 1244, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+  File "C:\Users\PMLS\Desktop\hackathon project\backend\venv\lib\site-packages\groq\_base_client.py", line 936, in request
+    return self._request(
+  File "C:\Users\PMLS\Desktop\hackathon project\backend\venv\lib\site-packages\groq\_base_client.py", line 1039, in _request
+    raise self._make_status_error_from_response(err.response) from None
+groq.NotFoundError: Error code: 404 - {'error': {'message': 'The model `llama-3.3-70b-versatile` does not exist or you do not have access to it.', 'type': 'invalid_request_error', 'code': 'model_not_found'}}
+2026-08-31 22:02:51,097 | ERROR | app.core.exceptions | AppException at /research/test-translation: Translation failed. Please try again.
+2026-09-01 12:41:03,692 | ERROR | app.services.translation | Translation failed: name '_translate_with_nllb' is not defined
+Traceback (most recent call last):
+  File "C:\Users\PMLS\Desktop\hackathon project\backend\app\services\translation.py", line 93, in translate_text
+    return _translate_with_nllb(text, src_nllb, tgt_nllb)
+NameError: name '_translate_with_nllb' is not defined. Did you mean: '_translate_with_groq'?
+2026-09-01 12:41:03,692 | ERROR | app.core.exceptions | AppException at /research/test-translation: Translation failed. Please try again.
+2026-09-01 12:41:30,612 | ERROR | app.services.translation | Translation failed: name '_translate_with_nllb' is not defined
+Traceback (most recent call last):
+  File "C:\Users\PMLS\Desktop\hackathon project\backend\app\services\translation.py", line 93, in translate_text
+    return _translate_with_nllb(text, src_nllb, tgt_nllb)
+NameError: name '_translate_with_nllb' is not defined. Did you mean: '_translate_with_groq'?
+2026-09-01 12:41:30,615 | ERROR | app.core.exceptions | AppException at /research/test-translation: Translation failed. Please try again.
+2026-09-01 12:46:04,826 | INFO | app.services.translation | Loading NLLB model: facebook/nllb-200-distilled-600M ...
+2026-09-01 12:46:05,671 | WARNING | huggingface_hub.file_download | Xet Storage is enabled for this repo, but the 'hf_xet' package is not installed. Falling back to regular HTTP download. For better performance, install the package with: `pip install huggingface_hub[hf_xet]` or `pip install hf_xet`
+2026-09-01 12:46:11,845 | WARNING | huggingface_hub.file_download | Xet Storage is enabled for this repo, but the 'hf_xet' package is not installed. Falling back to regular HTTP download. For better performance, install the package with: `pip install huggingface_hub[hf_xet]` or `pip install hf_xet`
+2026-09-01 12:47:06,954 | WARNING | huggingface_hub.file_download | Xet Storage is enabled for this repo, but the 'hf_xet' package is not installed. Falling back to regular HTTP download. For better performance, install the package with: `pip install huggingface_hub[hf_xet]` or `pip install hf_xet`
+2026-09-01 13:30:57,057 | INFO | app.services.translation | NLLB model loaded successfully.
+2026-09-01 14:02:29,391 | INFO | app.services.translation | Loading NLLB model: facebook/nllb-200-distilled-600M ...
+2026-09-01 14:02:33,425 | INFO | app.services.translation | NLLB model loaded successfully.
+2026-09-01 14:11:23,227 | INFO | app.services.retrieval | Initializing ChromaDB client...
+2026-09-01 14:11:23,784 | ERROR | chromadb.telemetry.product.posthog | Failed to send telemetry event ClientStartEvent: capture() takes 1 positional argument but 3 were given
+2026-09-01 14:11:25,403 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-01 14:11:27,873 | WARNING | huggingface_hub.file_download | Xet Storage is enabled for this repo, but the 'hf_xet' package is not installed. Falling back to regular HTTP download. For better performance, install the package with: `pip install huggingface_hub[hf_xet]` or `pip install hf_xet`
+2026-09-01 14:12:35,915 | ERROR | chromadb.telemetry.product.posthog | Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given
+2026-09-01 14:12:35,916 | INFO | app.services.retrieval | ChromaDB collection ready.
+2026-09-01 14:12:38,256 | ERROR | chromadb.telemetry.product.posthog | Failed to send telemetry event CollectionAddEvent: capture() takes 1 positional argument but 3 were given
+2026-09-01 14:12:38,272 | ERROR | chromadb.telemetry.product.posthog | Failed to send telemetry event CollectionQueryEvent: capture() takes 1 positional argument but 3 were given
+2026-09-01 14:17:51,810 | ERROR | app.services.retrieval | Wikipedia search failed: Expecting value: line 1 column 1 (char 0)
+2026-09-01 14:17:51,821 | ERROR | app.core.exceptions | AppException at /research/test-retrieval: Could not search for information right now.
+2026-09-01 14:29:38,848 | INFO | app.services.retrieval | Initializing ChromaDB client...
+2026-09-01 14:29:39,125 | ERROR | chromadb.telemetry.product.posthog | Failed to send telemetry event ClientStartEvent: capture() takes 1 positional argument but 3 were given
+2026-09-01 14:29:41,771 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-01 14:29:45,503 | ERROR | chromadb.telemetry.product.posthog | Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given
+2026-09-01 14:29:45,507 | INFO | app.services.retrieval | ChromaDB collection ready.
+2026-09-01 14:35:17,040 | INFO | app.services.retrieval | Initializing ChromaDB client...
+2026-09-01 14:35:17,295 | ERROR | chromadb.telemetry.product.posthog | Failed to send telemetry event ClientStartEvent: capture() takes 1 positional argument but 3 were given
+2026-09-01 14:35:18,864 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-01 14:35:21,952 | ERROR | chromadb.telemetry.product.posthog | Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given
+2026-09-01 14:35:21,960 | INFO | app.services.retrieval | ChromaDB collection ready.
+2026-09-01 14:50:25,882 | INFO | app.services.retrieval | Initializing ChromaDB client...
+2026-09-01 14:50:26,130 | ERROR | chromadb.telemetry.product.posthog | Failed to send telemetry event ClientStartEvent: capture() takes 1 positional argument but 3 were given
+2026-09-01 14:50:27,620 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-01 14:50:30,579 | ERROR | chromadb.telemetry.product.posthog | Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given
+2026-09-01 14:50:30,582 | INFO | app.services.retrieval | ChromaDB collection ready.
+2026-09-02 09:59:05,333 | INFO | app.services.retrieval | Initializing ChromaDB client...
+2026-09-02 09:59:05,599 | ERROR | chromadb.telemetry.product.posthog | Failed to send telemetry event ClientStartEvent: capture() takes 1 positional argument but 3 were given
+2026-09-02 09:59:08,596 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-02 09:59:11,948 | ERROR | chromadb.telemetry.product.posthog | Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given
+2026-09-02 09:59:11,960 | INFO | app.services.retrieval | ChromaDB collection ready.
+2026-09-02 10:11:43,162 | INFO | app.services.retrieval | Initializing ChromaDB client...
+2026-09-02 10:11:43,397 | ERROR | chromadb.telemetry.product.posthog | Failed to send telemetry event ClientStartEvent: capture() takes 1 positional argument but 3 were given
+2026-09-02 10:11:45,712 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-02 10:11:48,784 | ERROR | chromadb.telemetry.product.posthog | Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given
+2026-09-02 10:11:48,791 | INFO | app.services.retrieval | ChromaDB collection ready.
+2026-09-02 10:13:41,064 | INFO | app.services.retrieval | Initializing ChromaDB client...
+2026-09-02 10:13:41,237 | ERROR | chromadb.telemetry.product.posthog | Failed to send telemetry event ClientStartEvent: capture() takes 1 positional argument but 3 were given
+2026-09-02 10:13:43,493 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-02 10:13:46,455 | ERROR | chromadb.telemetry.product.posthog | Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given
+2026-09-02 10:13:46,469 | INFO | app.services.retrieval | ChromaDB collection ready.
+2026-09-02 10:18:07,346 | INFO | app.services.retrieval | Initializing ChromaDB client (in-memory)...
+2026-09-02 10:18:07,508 | ERROR | chromadb.telemetry.product.posthog | Failed to send telemetry event ClientStartEvent: capture() takes 1 positional argument but 3 were given
+2026-09-02 10:18:09,595 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-02 10:18:12,501 | ERROR | chromadb.telemetry.product.posthog | Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given
+2026-09-02 10:18:12,501 | INFO | app.services.retrieval | ChromaDB collection ready.
+2026-09-02 10:30:45,287 | INFO | app.services.retrieval | Loading sentence-transformer embedding model...
+2026-09-02 10:30:45,293 | INFO | sentence_transformers.SentenceTransformer | Use pytorch device_name: cpu
+2026-09-02 10:30:45,295 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-02 10:30:48,355 | INFO | app.services.retrieval | Embedding model loaded.
+2026-09-02 10:42:27,208 | INFO | app.services.retrieval | Loading sentence-transformer embedding model...
+2026-09-02 10:42:27,214 | INFO | sentence_transformers.SentenceTransformer | Use pytorch device_name: cpu
+2026-09-02 10:42:27,215 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-02 10:42:30,506 | INFO | app.services.retrieval | Embedding model loaded.
+2026-09-02 10:49:35,476 | INFO | app.services.retrieval | Loading sentence-transformer embedding model...
+2026-09-02 10:49:35,479 | INFO | sentence_transformers.SentenceTransformer | Use pytorch device_name: cpu
+2026-09-02 10:49:35,481 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-02 10:49:38,361 | INFO | app.services.retrieval | Embedding model loaded.
+2026-09-02 10:49:44,350 | ERROR | app.core.exceptions | AppException at /research: Translating into Roman Urdu is not supported.
+2026-09-02 10:53:06,800 | INFO | app.services.retrieval | Loading sentence-transformer embedding model...
+2026-09-02 10:53:06,808 | INFO | sentence_transformers.SentenceTransformer | Use pytorch device_name: cpu
+2026-09-02 10:53:06,812 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-02 10:53:09,734 | INFO | app.services.retrieval | Embedding model loaded.
+2026-09-02 11:03:11,944 | INFO | app.services.retrieval | Loading sentence-transformer embedding model...
+2026-09-02 11:03:11,948 | INFO | sentence_transformers.SentenceTransformer | Use pytorch device_name: cpu
+2026-09-02 11:03:11,950 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-02 11:03:15,067 | INFO | app.services.retrieval | Embedding model loaded.
+2026-09-02 11:19:55,546 | INFO | app.routes.translator | Client joined room 'room1' (target_lang=en). Room size: 1
+2026-09-02 11:19:55,555 | INFO | app.routes.translator | Client joined room 'room1' (target_lang=ur-roman). Room size: 2
+2026-09-02 11:19:56,576 | INFO | app.routes.translator | Client disconnected from room 'room1'.
+2026-09-02 11:26:04,527 | INFO | app.routes.translator | Client disconnected from room 'room1'.
+2026-09-02 11:26:19,108 | INFO | app.routes.translator | Client joined room 'room1' (target_lang=en). Room size: 1
+2026-09-02 11:26:19,118 | INFO | app.routes.translator | Client joined room 'room1' (target_lang=ur-roman). Room size: 2
+2026-09-02 11:26:20,127 | INFO | app.routes.translator | Client disconnected from room 'room1'.
+2026-09-02 11:28:10,270 | INFO | app.routes.translator | Client disconnected from room 'room1'.
+2026-09-02 11:28:37,831 | INFO | app.routes.translator | Client joined room 'room1' (target_lang=en). Room size: 1
+2026-09-02 11:28:37,846 | INFO | app.routes.translator | Client joined room 'room1' (target_lang=ur-roman). Room size: 2
+2026-09-02 11:28:38,846 | INFO | app.routes.translator | Client disconnected from room 'room1'.
+2026-09-02 11:35:18,366 | INFO | app.routes.translator | Client disconnected from room 'room1'.
+2026-09-02 11:36:03,410 | INFO | app.routes.translator | Client joined room 'room1' (target_lang=en). Room size: 1
+2026-09-02 11:36:03,412 | INFO | app.routes.translator | Client joined room 'room1' (target_lang=ur-roman). Room size: 2
+2026-09-02 11:36:04,419 | INFO | app.routes.translator | Client disconnected from room 'room1'.
+2026-09-02 11:37:39,444 | INFO | app.routes.translator | Client disconnected from room 'room1'.
+2026-09-02 11:40:13,726 | INFO | app.routes.translator | Client joined room 'room1' (target_lang=ur-roman). Room size: 1
+2026-09-02 11:40:13,732 | INFO | app.routes.translator | Client joined room 'room1' (target_lang=en). Room size: 2
+2026-09-02 11:40:13,789 | INFO | app.routes.translator | Client disconnected from room 'room1'.
+2026-09-02 11:40:13,790 | INFO | app.routes.translator | Client disconnected from room 'room1'.
+2026-09-02 11:41:01,824 | INFO | app.routes.translator | Client joined room 'room1' (target_lang=ur-roman). Room size: 1
+2026-09-02 11:41:01,827 | INFO | app.routes.translator | Client joined room 'room1' (target_lang=en). Room size: 2
+2026-09-02 11:41:03,398 | INFO | app.routes.translator | Client disconnected from room 'room1'.
+2026-09-02 11:41:05,830 | INFO | app.routes.translator | Client disconnected from room 'room1'.
+2026-09-02 11:56:06,682 | INFO | app.services.retrieval | Loading sentence-transformer embedding model...
+2026-09-02 11:56:06,687 | INFO | sentence_transformers.SentenceTransformer | Use pytorch device_name: cpu
+2026-09-02 11:56:06,687 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-02 11:56:10,602 | INFO | app.services.retrieval | Embedding model loaded.
+2026-09-02 11:56:15,888 | INFO | app.db.supabase_client | Supabase client initialized.
+2026-09-02 11:56:17,243 | WARNING | app.db.supabase_client | Failed to save chat turn to Supabase: {'code': '42501', 'details': None, 'hint': None, 'message': 'new row violates row-level security policy for table "chat_history"'}
+2026-09-02 11:56:17,550 | WARNING | app.db.supabase_client | Failed to save chat turn to Supabase: {'code': '42501', 'details': None, 'hint': None, 'message': 'new row violates row-level security policy for table "chat_history"'}
+2026-09-02 12:17:16,164 | INFO | app.services.retrieval | Loading sentence-transformer embedding model...
+2026-09-02 12:17:16,169 | INFO | sentence_transformers.SentenceTransformer | Use pytorch device_name: cpu
+2026-09-02 12:17:16,169 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-02 12:17:20,079 | INFO | app.services.retrieval | Embedding model loaded.
+2026-09-02 12:17:25,916 | INFO | app.db.supabase_client | Supabase client initialized.
+2026-09-02 12:26:02,198 | INFO | app.services.retrieval | Loading sentence-transformer embedding model...
+2026-09-02 12:26:02,200 | INFO | sentence_transformers.SentenceTransformer | Use pytorch device_name: cpu
+2026-09-02 12:26:02,200 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-02 12:26:05,385 | INFO | app.services.retrieval | Embedding model loaded.
+2026-09-02 12:26:13,948 | INFO | app.db.supabase_client | Supabase client initialized.
+2026-09-03 10:21:20,710 | ERROR | app.services.text_to_speech | TTS generation failed: status_code: 402, body: {'detail': {'type': 'payment_required', 'code': 'paid_plan_required', 'message': 'Free users cannot use library voices via the API. Please upgrade your subscription to use this voice.', 'status': 'payment_required', 'request_id': '59eaa3ffec4666f0588d4a007094a1dc'}}
+Traceback (most recent call last):
+  File "C:\Users\PMLS\Desktop\hackathon project\backend\app\services\text_to_speech.py", line 59, in generate_speech
+    for chunk in audio_generator:
+  File "C:\Users\PMLS\Desktop\hackathon project\backend\venv\lib\site-packages\elevenlabs\text_to_speech\client.py", line 170, in convert
+    raise ApiError(status_code=_response.status_code, body=_response_json)
+elevenlabs.core.api_error.ApiError: status_code: 402, body: {'detail': {'type': 'payment_required', 'code': 'paid_plan_required', 'message': 'Free users cannot use library voices via the API. Please upgrade your subscription to use this voice.', 'status': 'payment_required', 'request_id': '59eaa3ffec4666f0588d4a007094a1dc'}}
+2026-09-03 10:21:20,775 | ERROR | app.core.exceptions | AppException at /voice/test-tts: Could not generate speech. Please try again.
+2026-09-03 10:40:52,711 | ERROR | app.services.text_to_speech | TTS generation failed: status_code: 402, body: {'detail': {'type': 'payment_required', 'code': 'paid_plan_required', 'message': 'Free users cannot use library voices via the API. Please upgrade your subscription to use this voice.', 'status': 'payment_required', 'request_id': '44bf9e0efb70cb84a85f1068128c7195'}}
+Traceback (most recent call last):
+  File "C:\Users\PMLS\Desktop\hackathon project\backend\app\services\text_to_speech.py", line 59, in generate_speech
+    for chunk in audio_generator:
+  File "C:\Users\PMLS\Desktop\hackathon project\backend\venv\lib\site-packages\elevenlabs\text_to_speech\client.py", line 170, in convert
+    raise ApiError(status_code=_response.status_code, body=_response_json)
+elevenlabs.core.api_error.ApiError: status_code: 402, body: {'detail': {'type': 'payment_required', 'code': 'paid_plan_required', 'message': 'Free users cannot use library voices via the API. Please upgrade your subscription to use this voice.', 'status': 'payment_required', 'request_id': '44bf9e0efb70cb84a85f1068128c7195'}}
+2026-09-03 10:40:52,768 | ERROR | app.core.exceptions | AppException at /voice/test-tts: Could not generate speech. Please try again.
+2026-09-03 10:44:13,275 | ERROR | app.services.text_to_speech | TTS generation failed: status_code: 402, body: {'detail': {'type': 'payment_required', 'code': 'paid_plan_required', 'message': 'Free users cannot use library voices via the API. Please upgrade your subscription to use this voice.', 'status': 'payment_required', 'request_id': '493a45bf4cef72aa1be2d2b5b6478c83'}}
+Traceback (most recent call last):
+  File "C:\Users\PMLS\Desktop\hackathon project\backend\app\services\text_to_speech.py", line 59, in generate_speech
+    for chunk in audio_generator:
+  File "C:\Users\PMLS\Desktop\hackathon project\backend\venv\lib\site-packages\elevenlabs\text_to_speech\client.py", line 170, in convert
+    raise ApiError(status_code=_response.status_code, body=_response_json)
+elevenlabs.core.api_error.ApiError: status_code: 402, body: {'detail': {'type': 'payment_required', 'code': 'paid_plan_required', 'message': 'Free users cannot use library voices via the API. Please upgrade your subscription to use this voice.', 'status': 'payment_required', 'request_id': '493a45bf4cef72aa1be2d2b5b6478c83'}}
+2026-09-03 10:44:13,275 | ERROR | app.core.exceptions | AppException at /voice/test-tts: Could not generate speech. Please try again.
+2026-09-03 10:46:23,346 | ERROR | app.services.text_to_speech | TTS generation failed: status_code: 402, body: {'detail': {'type': 'payment_required', 'code': 'paid_plan_required', 'message': 'Free users cannot use library voices via the API. Please upgrade your subscription to use this voice.', 'status': 'payment_required', 'request_id': 'e792d5e3135ce625fbd762c5724244f9'}}
+Traceback (most recent call last):
+  File "C:\Users\PMLS\Desktop\hackathon project\backend\app\services\text_to_speech.py", line 59, in generate_speech
+    for chunk in audio_generator:
+  File "C:\Users\PMLS\Desktop\hackathon project\backend\venv\lib\site-packages\elevenlabs\text_to_speech\client.py", line 170, in convert
+    raise ApiError(status_code=_response.status_code, body=_response_json)
+elevenlabs.core.api_error.ApiError: status_code: 402, body: {'detail': {'type': 'payment_required', 'code': 'paid_plan_required', 'message': 'Free users cannot use library voices via the API. Please upgrade your subscription to use this voice.', 'status': 'payment_required', 'request_id': 'e792d5e3135ce625fbd762c5724244f9'}}
+2026-09-03 10:46:23,348 | ERROR | app.core.exceptions | AppException at /voice/test-tts: Could not generate speech. Please try again.
+2026-09-03 12:11:50,740 | ERROR | app.services.retrieval | Wikipedia search failed: 429 Client Error: Too Many Requests for url: https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=What+is+Pakistan%3F&srlimit=3&format=json
+2026-09-03 12:11:50,805 | ERROR | app.core.exceptions | AppException at /api/research/query: Could not search for information right now.
+2026-09-03 12:20:55,895 | WARNING | app.services.retrieval | Wikipedia rate-limited (429). Retrying in 2s...
+2026-09-03 12:20:58,436 | WARNING | app.services.retrieval | Wikipedia rate-limited (429). Retrying in 4s...
+2026-09-03 12:21:06,529 | INFO | app.services.retrieval | Loading sentence-transformer embedding model...
+2026-09-03 12:21:06,534 | INFO | sentence_transformers.SentenceTransformer | Use pytorch device_name: cpu
+2026-09-03 12:21:06,536 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-03 12:21:10,131 | INFO | app.services.retrieval | Embedding model loaded.
+2026-09-03 12:21:19,539 | INFO | app.db.supabase_client | Supabase client initialized.
+2026-09-03 12:28:22,601 | ERROR | app.services.translation | Translation failed: Completions.create() got an unexpected keyword argument 'reasoning_effort'
+Traceback (most recent call last):
+  File "C:\Users\PMLS\Desktop\hackathon project\backend\app\services\translation.py", line 99, in translate_text
+    return _translate_with_groq(text, source_name, target_name)
+  File "C:\Users\PMLS\Desktop\hackathon project\backend\app\services\translation.py", line 73, in _translate_with_groq
+    response = client.chat.completions.create(
+TypeError: Completions.create() got an unexpected keyword argument 'reasoning_effort'
+2026-09-03 12:28:22,604 | ERROR | app.core.exceptions | AppException at /api/research/query: Translation failed. Please try again.
+2026-09-03 12:34:36,129 | ERROR | app.services.translation | Translation failed: Completions.create() got an unexpected keyword argument 'reasoning_effort'
+Traceback (most recent call last):
+  File "C:\Users\PMLS\Desktop\hackathon project\backend\app\services\translation.py", line 99, in translate_text
+    return _translate_with_groq(text, source_name, target_name)
+  File "C:\Users\PMLS\Desktop\hackathon project\backend\app\services\translation.py", line 73, in _translate_with_groq
+    response = client.chat.completions.create(
+TypeError: Completions.create() got an unexpected keyword argument 'reasoning_effort'
+2026-09-03 12:34:36,132 | ERROR | app.core.exceptions | AppException at /api/research/query: Translation failed. Please try again.
+2026-09-03 12:42:46,451 | WARNING | app.services.retrieval | Wikipedia rate-limited (429). Retrying in 2s...
+2026-09-03 12:42:48,968 | WARNING | app.services.retrieval | Wikipedia rate-limited (429). Retrying in 4s...
+2026-09-03 12:42:53,461 | WARNING | app.services.retrieval | Wikipedia rate-limited (429). Retrying in 8s...
+2026-09-03 12:43:01,478 | ERROR | app.core.exceptions | AppException at /api/research/query: Could not reach Wikipedia right now. Please try again in a moment.
+2026-09-04 15:11:22,456 | INFO | app.services.retrieval | Loading sentence-transformer embedding model...
+2026-09-04 15:11:22,473 | INFO | sentence_transformers.SentenceTransformer | Use pytorch device_name: cpu
+2026-09-04 15:11:22,476 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-04 15:11:28,528 | INFO | app.services.retrieval | Embedding model loaded.
+2026-09-04 15:11:37,745 | INFO | app.db.supabase_client | Supabase client initialized.
+2026-09-04 15:14:40,599 | WARNING | app.services.retrieval | Wikipedia rate-limited (429). Retrying in 2s...
+2026-09-04 15:14:43,142 | WARNING | app.services.retrieval | Wikipedia rate-limited (429). Retrying in 4s...
+2026-09-04 15:14:47,677 | WARNING | app.services.retrieval | Wikipedia rate-limited (429). Retrying in 8s...
+2026-09-04 15:14:55,681 | ERROR | app.core.exceptions | AppException at /api/research/query: Could not reach Wikipedia right now. Please try again in a moment.
+2026-09-04 15:26:13,533 | INFO | app.services.retrieval | Loading sentence-transformer embedding model...
+2026-09-04 15:26:13,541 | INFO | sentence_transformers.SentenceTransformer | Use pytorch device_name: cpu
+2026-09-04 15:26:13,541 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-04 15:26:17,833 | INFO | app.services.retrieval | Embedding model loaded.
+2026-09-04 15:26:24,291 | INFO | app.db.supabase_client | Supabase client initialized.
+2026-09-04 15:26:37,398 | INFO | app.services.retrieval | Using cached Wikipedia results for: What is Pakistan?
+2026-09-04 16:46:45,165 | WARNING | app.services.retrieval | Wikipedia rate-limited (429). Retrying in 2s...
+2026-09-04 16:46:47,832 | WARNING | app.services.retrieval | Wikipedia rate-limited (429). Retrying in 4s...
+2026-09-04 16:46:52,387 | WARNING | app.services.retrieval | Wikipedia rate-limited (429). Retrying in 8s...
+2026-09-04 16:47:00,389 | ERROR | app.core.exceptions | AppException at /api/research/query: Could not reach Wikipedia right now. Please try again in a moment.
+2026-09-04 16:47:06,236 | INFO | app.services.retrieval | Loading sentence-transformer embedding model...
+2026-09-04 16:47:06,245 | INFO | sentence_transformers.SentenceTransformer | Use pytorch device_name: cpu
+2026-09-04 16:47:06,247 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-04 16:47:11,582 | INFO | app.services.retrieval | Embedding model loaded.
+2026-09-04 16:47:21,838 | INFO | app.db.supabase_client | Supabase client initialized.
+2026-09-04 16:47:25,468 | INFO | app.services.retrieval | Using cached Wikipedia results for: What is Pakistan?
+2026-09-04 16:48:15,221 | ERROR | app.core.exceptions | AppException at /api/voice/transcribe: No speech could be detected in the audio.
+2026-09-04 17:01:47,248 | WARNING | app.services.retrieval | Wikipedia rate-limited (429). Retrying in 2s...
+2026-09-04 17:01:49,887 | WARNING | app.services.retrieval | Wikipedia rate-limited (429). Retrying in 4s...
+2026-09-04 17:01:54,754 | WARNING | app.services.retrieval | Wikipedia rate-limited (429). Retrying in 8s...
+2026-09-04 17:02:02,771 | INFO | app.services.retrieval | Loading sentence-transformer embedding model...
+2026-09-04 17:02:02,775 | INFO | sentence_transformers.SentenceTransformer | Use pytorch device_name: cpu
+2026-09-04 17:02:02,775 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-04 17:02:06,119 | INFO | app.services.retrieval | Embedding model loaded.
+2026-09-04 17:02:09,894 | INFO | app.db.supabase_client | Supabase client initialized.
+2026-09-04 17:03:25,368 | INFO | app.services.retrieval | Using cached Wikipedia results for: What is artificial intelligence?
+2026-09-04 17:04:00,889 | WARNING | app.services.retrieval | Wikipedia rate-limited (429). Retrying in 2s...
+2026-09-04 17:04:46,153 | WARNING | app.services.retrieval | Wikipedia rate-limited (429). Retrying in 2s...
+2026-09-04 17:04:48,902 | WARNING | app.services.retrieval | Wikipedia rate-limited (429). Retrying in 4s...
+2026-09-04 17:04:53,506 | WARNING | app.services.retrieval | Wikipedia rate-limited (429). Retrying in 8s...
+2026-09-04 17:05:01,522 | ERROR | app.core.exceptions | AppException at /api/research/query: Could not reach Wikipedia right now. Please try again in a moment.
+2026-09-04 18:22:29,242 | INFO | app.services.translation | Loading NLLB model: facebook/nllb-200-distilled-600M ...
+2026-09-04 18:22:33,514 | INFO | app.services.translation | NLLB model loaded successfully.
+2026-09-04 18:22:42,195 | INFO | app.services.retrieval | Tavily returned 5 usable results for query: What is artificial intelligence and how does it work?
+2026-09-04 18:22:42,256 | INFO | app.services.retrieval | Loading sentence-transformer embedding model...
+2026-09-04 18:22:42,279 | INFO | sentence_transformers.SentenceTransformer | Use pytorch device_name: cpu
+2026-09-04 18:22:42,282 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-04 18:22:46,472 | INFO | app.services.retrieval | Embedding model loaded.
+2026-09-04 18:22:47,072 | INFO | app.services.retrieval | Retrieved 5 chunks from 5 sources for: What is artificial intelligence and how does it work?
+2026-09-04 18:24:06,279 | INFO | app.db.supabase_client | Supabase client initialized.
+2026-09-04 18:24:39,164 | INFO | app.services.retrieval | Using cached Tavily results for: What is artificial intelligence and how does it work?
+2026-09-04 18:24:39,878 | INFO | app.services.retrieval | Retrieved 5 chunks from 5 sources for: What is artificial intelligence and how does it work?
+2026-09-05 00:29:40,944 | INFO | app.services.retrieval | Tavily returned 5 usable results for query: Speak Sindhi to me.
+2026-09-05 00:29:40,961 | INFO | app.services.retrieval | Loading sentence-transformer embedding model...
+2026-09-05 00:29:40,975 | INFO | sentence_transformers.SentenceTransformer | Use pytorch device_name: cpu
+2026-09-05 00:29:40,977 | INFO | sentence_transformers.SentenceTransformer | Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-09-05 00:29:46,379 | INFO | app.services.retrieval | Embedding model loaded.
+2026-09-05 00:29:47,265 | INFO | app.services.retrieval | Retrieved 5 chunks from 5 sources for: Speak Sindhi to me.
+2026-09-05 00:29:50,819 | INFO | app.db.supabase_client | Supabase client initialized.
+2026-09-05 00:30:00,457 | INFO | app.services.retrieval | Tavily returned 5 usable results for query: Can you speak Sindhi to me?
+2026-09-05 00:30:00,776 | INFO | app.services.retrieval | Retrieved 5 chunks from 5 sources for: Can you speak Sindhi to me?
