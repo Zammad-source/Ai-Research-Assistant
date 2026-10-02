@@ -1,4 +1,21 @@
-backend/venv/ 
-__pycache__/ 
-*.pyc 
-.env 
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Secrets: keep .env.example, which is the template.
+.env
+.env.*
+!.env.example
+
+# Generated at runtime by the running backend.
+logs/
+tts_output/
+chroma_store/
+speech_*.mp3
+test_speech.mp3
+
+# Stray shell-redirect artifacts.
+curl

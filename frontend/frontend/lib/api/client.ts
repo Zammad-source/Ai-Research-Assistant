@@ -7,13 +7,29 @@ export class ApiError extends Error {
   }
 }
 
+// A research query can involve translation (NLLB on CPU), Tavily search,
+// embedding ranking and answer generation, so 15s aborted almost every
+// request before it could finish. Voice endpoints set their own, shorter
+// timeouts in voice.ts.
+export const DEFAULT_TIMEOUT_MS = 120000
+
 export async function apiClient<T>(
   endpoint: string,
   options: RequestInit = {},
-  timeoutMs = 15000 // 15 seconds timeout limit
+  timeoutMs = DEFAULT_TIMEOUT_MS
 ): Promise<T> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  let timedOut = false;
+
+  const timeoutId = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, timeoutMs);
+
+  // Honour a caller-supplied signal as well as our own timeout.
+  const externalSignal = options.signal
+  const onExternalAbort = () => controller.abort()
+  externalSignal?.addEventListener("abort", onExternalAbort)
 
   try {
     const response = await fetch(`${API_URL}${endpoint}`, {
@@ -42,11 +58,19 @@ export async function apiClient<T>(
   } catch (err: unknown) {
     clearTimeout(timeoutId);
     if (err instanceof DOMException && err.name === "AbortError") {
+      if (externalSignal?.aborted) {
+        throw new ApiError(499, "Request cancelled.");
+      }
+      if (timedOut) {
+        throw new ApiError(408, "Request took too long to respond. The backend might be busy or unavailable.");
+      }
       throw new ApiError(408, "Request took too long to respond. The backend might be busy or unavailable.");
     }
     if (err instanceof ApiError) {
       throw err;
     }
     throw new ApiError(503, "Unable to connect to the server. Please ensure the backend is running.");
+  } finally {
+    externalSignal?.removeEventListener("abort", onExternalAbort)
   }
 }

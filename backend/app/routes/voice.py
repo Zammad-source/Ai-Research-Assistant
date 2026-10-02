@@ -5,9 +5,10 @@ import tempfile
 from fastapi import APIRouter, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from starlette.background import BackgroundTask
 
 from app.services.speech_to_text import transcribe_audio
-from app.services.text_to_speech import generate_speech
+from app.services.text_to_speech import generate_speech, discard_generated_file
 
 logger = logging.getLogger(__name__)
 
@@ -43,4 +44,9 @@ async def test_tts(payload: TTSTestRequest):
     Send text, get back a playable/downloadable mp3 file.
     """
     output_path = generate_speech(payload.text)
-    return FileResponse(output_path, media_type="audio/mpeg", filename="speech.mp3")
+    return FileResponse(
+        output_path,
+        media_type="audio/mpeg",
+        filename="speech.mp3",
+        background=BackgroundTask(discard_generated_file, output_path),
+    )

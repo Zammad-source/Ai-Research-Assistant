@@ -5,17 +5,19 @@ import tempfile
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, UploadFile, File, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from starlette.background import BackgroundTask
 
 from app.services.language_detection import detect_language
 from app.services.translation import translate_text
 from app.services.retrieval import retrieve_relevant_context
 from app.services.answer_generation import generate_answer_with_citations, rewrite_query_with_history
 from app.services.speech_to_text import transcribe_audio_with_language
-from app.services.text_to_speech import generate_speech
+from app.services.text_to_speech import generate_speech, discard_generated_file
 from app.services import memory
+from app.core.limiter import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +54,13 @@ def _build_numbered_sources(chunk_details: list[dict]) -> list[dict]:
     return numbered
 
 
+# These three endpoints are reachable from the public Vercel URL and each one
+# spends paid API credit (Groq, Tavily, ElevenLabs). Without limits, a single
+# bored visitor can drain the free-tier keys and exhaust Railway's credit.
+# Research is the expensive one: it can be 4+ LLM calls plus a web search.
 @router.post("/research/query")
-async def research_query(payload: ResearchQueryRequest):
+@limiter.limit("5/minute")
+async def research_query(request: Request, payload: ResearchQueryRequest):
     conversation_id = payload.conversation_id or str(uuid.uuid4())
 
     detected = detect_language(payload.query)
@@ -103,7 +110,8 @@ async def research_query(payload: ResearchQueryRequest):
 # ---------- /api/voice/transcribe ----------
 
 @router.post("/voice/transcribe")
-async def voice_transcribe(audio: UploadFile = File(...)):
+@limiter.limit("15/minute")
+async def voice_transcribe(request: Request, audio: UploadFile = File(...)):
     suffix = os.path.splitext(audio.filename or "recording.webm")[1] or ".webm"
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         content = await audio.read()
@@ -124,6 +132,13 @@ class VoiceSpeechRequest(BaseModel):
 
 
 @router.post("/voice/speech")
-async def voice_speech(payload: VoiceSpeechRequest):
+@limiter.limit("15/minute")
+async def voice_speech(request: Request, payload: VoiceSpeechRequest):
     output_path = generate_speech(payload.text)
-    return FileResponse(output_path, media_type="audio/mpeg")
+    # BackgroundTask runs after the body has been streamed, so the clip is
+    # removed only once it has been fully sent.
+    return FileResponse(
+        output_path,
+        media_type="audio/mpeg",
+        background=BackgroundTask(discard_generated_file, output_path),
+    )

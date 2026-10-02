@@ -31,7 +31,10 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
+# .env.example is the documented template and MUST stay tracked, otherwise
+# nobody knows which variables Vercel needs.
 .env*
+!.env.example
 
 # vercel
 .vercel

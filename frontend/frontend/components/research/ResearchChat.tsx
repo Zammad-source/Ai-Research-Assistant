@@ -2,6 +2,7 @@
 
 import { useRef, useEffect } from "react";
 import { useResearchConversation } from "@/hooks/useResearchConversation";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { MessageBubble } from "./MessageBubble";
 import { ResearchInput } from "./ResearchInput";
 import { ResearchPending } from "./ResearchPending";
@@ -9,6 +10,9 @@ import { ResearchError } from "./ResearchError";
 
 export function ResearchChat() {
   const { messages, isPending, error, sendQuery, retry } = useResearchConversation();
+  // One shared player for the whole thread — a per-message instance would let
+  // several clips play on top of each other.
+  const { play, stop, activeMessageId, state: playbackState } = useTextToSpeech();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,7 +44,14 @@ export function ResearchChat() {
           )}
 
           {messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
+            <MessageBubble
+              key={message.id}
+              message={message}
+              play={play}
+              stop={stop}
+              activeMessageId={activeMessageId}
+              playbackState={playbackState}
+            />
           ))}
 
           {isPending && (

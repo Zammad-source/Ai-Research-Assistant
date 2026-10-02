@@ -13,5 +13,22 @@ export const SECONDARY_NAV_ITEMS = [
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+/**
+ * Base URL for the translator WebSocket.
+ *
+ * NEXT_PUBLIC_WS_URL wins when set. Otherwise it is derived from API_URL so
+ * there is only one value to configure per environment -- setting the API URL
+ * and forgetting this one used to leave the translator silently pointing at
+ * localhost in production.
+ *
+ * The scheme has to be upgraded to wss:// on https pages: browsers block
+ * mixed content, so a ws:// socket on a Vercel URL never connects at all.
+ */
+function deriveWsUrl(apiUrl: string): string {
+  if (apiUrl.startsWith("https://")) return `wss://${apiUrl.slice(8)}`;
+  if (apiUrl.startsWith("http://")) return `ws://${apiUrl.slice(7)}`;
+  return apiUrl;
+}
+
 export const WS_URL =
-  process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000";
+  process.env.NEXT_PUBLIC_WS_URL ?? deriveWsUrl(API_URL);

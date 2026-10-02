@@ -39,7 +39,15 @@ export function useResearchConversation() {
       USE_MOCK
         ? sendResearchQueryMock(query, backendConversationId)
         : sendResearchQuery(query, backendConversationId),
-    retry: 2,
+    // Only retry transport/server failures. A 4xx (bad request, timeout,
+    // validation) will fail identically every time, and retrying it just
+    // re-runs Tavily/Groq and delays the error the user needs to see.
+    retry: (failureCount, error) => {
+      if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
+        return false
+      }
+      return failureCount < 2
+    },
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
     onSuccess: (data) => {
       if (!activeConversationId) return

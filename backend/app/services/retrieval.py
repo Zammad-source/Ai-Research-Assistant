@@ -1,9 +1,8 @@
 import logging
+import re
 import time as time_module
 
-import numpy as np
 import requests
-from sentence_transformers import SentenceTransformer
 
 from app.config import get_settings
 from app.core.exceptions import RetrievalError
@@ -27,23 +26,48 @@ TAVILY_CACHE_TTL_SECONDS = 300  # 5 minutes
 MAX_TAVILY_ATTEMPTS = 2
 
 _embedder = None
+_embedder_unavailable = False
 
 _tavily_cache: dict[str, tuple[float, list[dict]]] = {}
 
 
 # ---------------------------------------------------------------------------
-# Embeddings
+# Embeddings (optional)
 # ---------------------------------------------------------------------------
+#
+# Semantic ranking needs sentence-transformers, which drags in torch (~800 MB)
+# and a ~90 MB model. That does not fit on free hosting (Railway's free
+# container has 512 MB RAM), and it is not in requirements.txt by design.
+#
+# So the import is optional: when the package is present we rank with real
+# embeddings, and when it is absent we fall back to the lexical ranker below.
+# Either way the endpoint returns ranked chunks -- the frontend never has to
+# know which one ran.
 
 def _get_embedder():
-    global _embedder
+    """Return a SentenceTransformer, or None when it is not installed."""
+    global _embedder, _embedder_unavailable
 
-    if _embedder is None:
+    if _embedder is not None or _embedder_unavailable:
+        return _embedder
+
+    try:
+        from sentence_transformers import SentenceTransformer
+
         logger.info("Loading sentence-transformer embedding model...")
         _embedder = SentenceTransformer("all-MiniLM-L6-v2")
         logger.info("Embedding model loaded.")
+        return _embedder
 
-    return _embedder
+    except Exception as e:
+        # Log once, not on every query.
+        _embedder_unavailable = True
+        logger.warning(
+            "sentence-transformers unavailable (%s); "
+            "falling back to lexical chunk ranking.",
+            e,
+        )
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -280,13 +304,103 @@ def _search_tavily(
 # Similarity
 # ---------------------------------------------------------------------------
 
-def _cosine_similarity(
-    query_vec: np.ndarray,
-    chunk_vecs: np.ndarray,
-) -> np.ndarray:
-    query_norm = query_vec / (
-        np.linalg.norm(query_vec) + 1e-10
-    )
+# Words too common to say anything about relevance.
+_STOPWORDS = {
+    "a", "an", "the", "and", "or", "but", "if", "of", "at", "by", "for",
+    "with", "about", "into", "to", "from", "in", "on", "is", "are", "was",
+    "were", "be", "been", "being", "it", "its", "this", "that", "these",
+    "those", "as", "than", "then", "there", "here", "what", "which", "who",
+    "whom", "how", "why", "when", "where", "do", "does", "did", "can",
+    "could", "will", "would", "should", "not", "no", "yes", "you", "your",
+    "i", "me", "my", "we", "our", "they", "them", "their", "he", "she",
+    "his", "her", "have", "has", "had", "so", "such", "also", "more",
+    "most", "some", "any", "all", "both", "each", "very", "just", "up",
+    "out", "over", "under", "again", "tell", "give", "give", "know",
+}
+
+_TOKEN_RE = re.compile(r"[a-z0-9]+")
+
+# Weight of the phrase (bigram) signal relative to the bag-of-words signal.
+# Phrases are what separate "Karachi is the largest city of Pakistan" from
+# "Islamabad is the capital of Pakistan" -- both contain the same query terms,
+# so unigrams alone tie.
+_BIGRAM_WEIGHT = 1.5
+
+
+def _tokenize(text: str) -> list[str]:
+    """Lowercase word tokens, stopwords and 1-char noise removed."""
+    return [
+        t for t in _TOKEN_RE.findall((text or "").lower())
+        if len(t) > 1 and t not in _STOPWORDS
+    ]
+
+
+def _bigrams(text: str) -> set[tuple[str, str]]:
+    """
+    Adjacent word pairs, built from the RAW token stream.
+
+    Stopwords are deliberately kept here: the phrase "capital of pakistan"
+    only exists as adjacent pairs in raw text, and stripping "of" would
+    destroy it.
+    """
+    tokens = _TOKEN_RE.findall((text or "").lower())
+    return {(tokens[i], tokens[i + 1]) for i in range(len(tokens) - 1)}
+
+
+def _lexical_rank(query: str, chunks: list[str], top_k: int) -> list[int]:
+    """
+    Rank chunk indices by how well they match the query.
+
+    Stands in for embedding similarity when torch is not installed. The score
+    has three parts:
+
+      coverage  what fraction of the query's content words a chunk covers
+      density   matched terms per sqrt(chunk length), so a long chunk cannot
+                win on volume alone
+      phrases   fraction of the query's word pairs that appear adjacently
+
+    Ties keep Tavily's original relevance order.
+    """
+    q_terms = set(_tokenize(query))
+    if not q_terms or not chunks:
+        return list(range(len(chunks)))[:top_k]
+
+    q_bigrams = _bigrams(query)
+    total_bigrams = len(q_bigrams)
+
+    scored: list[tuple[float, int]] = []
+    for index, chunk in enumerate(chunks):
+        c_terms = _tokenize(chunk)
+
+        if not c_terms:
+            scored.append((0.0, index))
+            continue
+
+        overlap = q_terms & set(c_terms)
+        if not overlap:
+            scored.append((0.0, index))
+            continue
+
+        coverage = len(overlap) / len(q_terms)
+        density = len(overlap) / (len(c_terms) ** 0.5)
+
+        phrase_score = 0.0
+        if total_bigrams:
+            matched = len(q_bigrams & _bigrams(chunk))
+            phrase_score = _BIGRAM_WEIGHT * (matched / total_bigrams)
+
+        scored.append((coverage + 0.5 * density + phrase_score, index))
+
+    # Sort by score descending, then by original position ascending.
+    scored.sort(key=lambda pair: (-pair[0], pair[1]))
+    return [index for _, index in scored[:top_k]]
+
+
+def _cosine_similarity(query_vec, chunk_vecs):
+    """Cosine similarity of one query vector against a matrix of chunk vectors."""
+    import numpy as np
+
+    query_norm = query_vec / (np.linalg.norm(query_vec) + 1e-10)
 
     chunk_norms = chunk_vecs / (
         np.linalg.norm(
@@ -399,95 +513,99 @@ def retrieve_relevant_context(
         }
 
     # ------------------------------------------------------------------
-    # 3. Existing semantic ranking
+    # 3. Semantic ranking, with a lexical fallback
     # ------------------------------------------------------------------
 
-    try:
-        embedder = _get_embedder()
+    # Do not request more chunks than actually exist.
+    actual_top_k = min(
+        max(1, top_k),
+        len(all_chunks),
+    )
 
-        chunk_vecs = embedder.encode(
-            all_chunks,
-            convert_to_numpy=True,
-            show_progress_bar=False,
-        )
+    embedder = _get_embedder()
 
-        query_vec = embedder.encode(
-            query,
-            convert_to_numpy=True,
-            show_progress_bar=False,
-        )
+    top_indices: list[int] | None = None
 
-        similarities = _cosine_similarity(
-            query_vec,
-            chunk_vecs,
-        )
+    if embedder is not None:
+        try:
+            import numpy as np
 
-        # Do not request more chunks than actually exist.
-        actual_top_k = min(
-            max(1, top_k),
-            len(all_chunks),
-        )
-
-        top_indices = np.argsort(
-            similarities
-        )[::-1][:actual_top_k]
-
-        retrieved_chunks = [
-            all_chunks[i]
-            for i in top_indices
-        ]
-
-        chunk_details = [
-            {
-                "text": all_chunks[i],
-                "title": all_meta[i]["title"],
-                "url": all_meta[i]["url"],
-            }
-            for i in top_indices
-        ]
-
-        # ------------------------------------------------------------------
-        # 4. Unique source list
-        # ------------------------------------------------------------------
-
-        sources = []
-        seen_urls = set()
-
-        for i in top_indices:
-            meta = all_meta[i]
-            url = meta["url"]
-
-            if not url or url in seen_urls:
-                continue
-
-            sources.append(
-                {
-                    "title": meta["title"],
-                    "url": url,
-                }
+            chunk_vecs = embedder.encode(
+                all_chunks,
+                convert_to_numpy=True,
+                show_progress_bar=False,
             )
 
-            seen_urls.add(url)
+            query_vec = embedder.encode(
+                query,
+                convert_to_numpy=True,
+                show_progress_bar=False,
+            )
 
-        logger.info(
-            "Retrieved %d chunks from %d sources for: %s",
-            len(retrieved_chunks),
-            len(sources),
-            query,
-        )
+            similarities = _cosine_similarity(
+                query_vec,
+                chunk_vecs,
+            )
 
-        return {
-            "chunks": retrieved_chunks,
-            "sources": sources,
-            "chunk_details": chunk_details,
+            top_indices = list(
+                np.argsort(similarities)[::-1][:actual_top_k]
+            )
+
+        except Exception as e:
+            # A failing embedder must not fail the request -- ranking is a
+            # quality improvement, not a correctness requirement.
+            logger.exception("Embedding ranking failed: %s", e)
+            top_indices = None
+
+    if top_indices is None:
+        top_indices = _lexical_rank(query, all_chunks, actual_top_k)
+
+    retrieved_chunks = [
+        all_chunks[i]
+        for i in top_indices
+    ]
+
+    chunk_details = [
+        {
+            "text": all_chunks[i],
+            "title": all_meta[i]["title"],
+            "url": all_meta[i]["url"],
         }
+        for i in top_indices
+    ]
 
-    except Exception as e:
-        logger.exception(
-            "Retrieval/embedding failed: %s",
-            e,
+    # ------------------------------------------------------------------
+    # 4. Unique source list
+    # ------------------------------------------------------------------
+
+    sources = []
+    seen_urls = set()
+
+    for i in top_indices:
+        meta = all_meta[i]
+        url = meta["url"]
+
+        if not url or url in seen_urls:
+            continue
+
+        sources.append(
+            {
+                "title": meta["title"],
+                "url": url,
+            }
         )
 
-        raise RetrievalError(
-            "Could not retrieve relevant information."
-        ) from e
+        seen_urls.add(url)
+
+    logger.info(
+        "Retrieved %d chunks from %d sources for: %s",
+        len(retrieved_chunks),
+        len(sources),
+        query,
+    )
+
+    return {
+        "chunks": retrieved_chunks,
+        "sources": sources,
+        "chunk_details": chunk_details,
+    }

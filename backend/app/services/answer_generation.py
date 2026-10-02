@@ -1,4 +1,5 @@
 import logging
+import re
 
 from groq import Groq
 
@@ -9,6 +10,40 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 _groq_client = None
+
+
+# openai/gpt-oss-120b emits its own citation markup (e.g. 【1†L1-L4】) and
+# ignores the "[1]" format the prompt asks for, so answers reached the user
+# with unreadable markers that no client could parse. Rewrite them into the
+# plain "[1]" form. This has to happen before translation: "[1]" survives
+# both NLLB and Groq, while the native glyphs get stripped.
+#
+# The source number is whatever sits directly before the dagger.
+_NATIVE_CITATION = re.compile(r"【[^】]*?(\d+)†[^】]*?】")
+_NATIVE_CITATION_TURN = re.compile(r"【[^】]*?turn\d+cite(\d+)[^】]*?】")
+
+# A citation glued straight onto the preceding word ("Islamabad[1]") needs a
+# separating space. Skipped when one is already there, when the citation is
+# adjacent to another one ("[1][3]"), or after sentence punctuation.
+_CITATION_NEEDS_SPACE = re.compile(r"(?<=[^\s\[\].,;:!?])\[(\d{1,2})\]")
+
+# The frontend renders answers as plain text, so leftover markdown emphasis
+# markers would show up literally as "**Islamabad**". Only bold is stripped:
+# single-asterisk stripping also mangles arithmetic like "2 * 3 * 4".
+_MD_BOLD = re.compile(r"\*\*(.+?)\*\*", re.DOTALL)
+
+
+def _postprocess_answer(text: str) -> str:
+    """Normalize the model's output into the plain-text format clients expect."""
+    if not text:
+        return text
+
+    cleaned = _NATIVE_CITATION_TURN.sub(r"[\1]", text)
+    cleaned = _NATIVE_CITATION.sub(r"[\1]", cleaned)
+    cleaned = _MD_BOLD.sub(r"\1", cleaned)
+    cleaned = _CITATION_NEEDS_SPACE.sub(r" [\1]", cleaned)
+
+    return cleaned.strip()
 
 
 def _get_groq_client():
@@ -59,7 +94,7 @@ def generate_answer(query: str, chunks: list[str], history: list[dict] | None = 
             temperature=0.2,
             extra_body={"reasoning_effort": "low"},
         )
-        return response.choices[0].message.content.strip()
+        return _postprocess_answer(response.choices[0].message.content)
 
     except Exception as e:
         logger.exception(f"Answer generation failed: {e}")
@@ -80,7 +115,8 @@ def rewrite_query_with_history(query: str, history: list[dict] | None) -> str:
             "rewrite the follow-up question as a standalone question that "
             "makes sense without the history. Resolve pronouns like 'it', "
             "'its', 'this', 'that' to the actual subject. "
-            "Return ONLY the rewritten question, nothing else.\n\n"
+            "Return ONLY the rewritten question as a single plain line of "
+            "text. No markdown, no quotes, no preamble.\n\n"
             f"History:\n{history_text}\n\n"
             f"Follow-up question: {query}\n\n"
             f"Standalone question:"
@@ -92,7 +128,7 @@ def rewrite_query_with_history(query: str, history: list[dict] | None) -> str:
             temperature=0.0,
             extra_body={"reasoning_effort": "low"},
         )
-        rewritten = response.choices[0].message.content.strip()
+        rewritten = _postprocess_answer(response.choices[0].message.content)
         return rewritten if rewritten else query
     except Exception as e:
         logger.warning(f"Query rewriting failed, using original query: {e}")
@@ -150,7 +186,7 @@ def generate_answer_with_citations(
             temperature=0.2,
             extra_body={"reasoning_effort": "low"},
         )
-        return response.choices[0].message.content.strip()
+        return _postprocess_answer(response.choices[0].message.content)
 
     except Exception as e:
         logger.exception(f"Answer generation (citations) failed: {e}")

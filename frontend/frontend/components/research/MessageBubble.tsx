@@ -5,18 +5,73 @@ import { User, Sparkles, Copy, Check, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { ResearchMessage } from "@/types/research";
-import { SourceCard } from "./SourceCard";
-import { useTextToSpeech } from "@/hooks/useTextToSpeech";
+import { SourceCard, sourceDomId } from "./SourceCard";
+import { Citation } from "./Citation";
 import { getTextDirection, isRtlText } from "@/lib/rtl";
+import type { PlaybackState } from "@/hooks/useTextToSpeech";
 
-export function MessageBubble({ message }: { message: ResearchMessage }) {
+interface MessageBubbleProps {
+  message: ResearchMessage;
+  /** Shared TTS controller, owned by ResearchChat so only one clip plays. */
+  play: (text: string, messageId: string) => void;
+  stop: () => void;
+  activeMessageId: string | null;
+  playbackState: PlaybackState;
+}
+
+/**
+ * Splits answer text on inline citation markers like "[1]" / "[12]" and
+ * returns the text fragments interleaved with the parsed citation numbers.
+ * The backend's generate_answer_with_citations is instructed to cite claims
+ * this way, so without this the user just sees the raw "[1]" characters.
+ */
+const CITATION_PATTERN = /\[(\d{1,2})\]/g;
+
+type Segment = string | { citation: number };
+
+function parseCitations(text: string): Segment[] {
+  const segments: Segment[] = [];
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(CITATION_PATTERN)) {
+    const start = match.index ?? 0;
+    if (start > lastIndex) {
+      segments.push(text.slice(lastIndex, start));
+    }
+    segments.push({ citation: Number(match[1]) });
+    lastIndex = start + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    segments.push(text.slice(lastIndex));
+  }
+
+  return segments;
+}
+
+export function MessageBubble({
+  message,
+  play,
+  stop,
+  activeMessageId,
+  playbackState,
+}: MessageBubbleProps) {
   const isUser = message.role === "user";
   const [copied, setCopied] = useState(false);
-  const { play, stop, activeMessageId, state } = useTextToSpeech();
 
-  const isPlaying = activeMessageId === message.id && state === "playing";
+  const isPlaying = activeMessageId === message.id && playbackState === "playing";
   const direction = getTextDirection(message.content);
   const isRtl = isRtlText(message.content);
+
+  // Only offer a clickable citation for a source that actually exists.
+  const availableSourceNumbers = new Set(
+    (message.sources ?? []).map((source, idx) => {
+      const numeric = Number.parseInt(source.id.replace(/^s/i, ""), 10);
+      return Number.isFinite(numeric) ? numeric : idx + 1;
+    })
+  );
+
+  const segments = !isUser ? parseCitations(message.content) : null;
 
   function handleCopy() {
     navigator.clipboard.writeText(message.content);
@@ -30,6 +85,21 @@ export function MessageBubble({ message }: { message: ResearchMessage }) {
     } else {
       play(message.content, message.id);
     }
+  }
+
+  function scrollToSource(citationNumber: number) {
+    const source = (message.sources ?? [])[citationNumber - 1];
+    const target = source
+      ? document.getElementById(sourceDomId(source))
+      : document.getElementById(`source-s${citationNumber}`);
+
+    if (!target) return;
+
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    target.classList.add("ring-2", "ring-primary/60");
+    setTimeout(() => {
+      target.classList.remove("ring-2", "ring-primary/60");
+    }, 1500);
   }
 
   return (
@@ -60,7 +130,21 @@ export function MessageBubble({ message }: { message: ResearchMessage }) {
             )}
           >
             <span className="sr-only">{isUser ? "You said: " : "Lisaan said: "}</span>
-            {message.content}
+            {segments
+              ? segments.map((segment, idx) =>
+                  typeof segment === "string" ? (
+                    <span key={idx}>{segment}</span>
+                  ) : availableSourceNumbers.has(segment.citation) ? (
+                    <Citation
+                      key={idx}
+                      index={segment.citation}
+                      onClick={() => scrollToSource(segment.citation)}
+                    />
+                  ) : (
+                    <span key={idx}>{`[${segment.citation}]`}</span>
+                  )
+                )
+              : message.content}
           </div>
 
           {!isUser && message.sources && message.sources.length > 0 && (

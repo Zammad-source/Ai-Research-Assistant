@@ -62,3 +62,20 @@ def generate_speech(text: str, output_path: str | None = None) -> str:
     except Exception as e:
         logger.exception(f"TTS generation failed: {e}")
         raise TextToSpeechError("Could not generate speech. Please try again.")
+
+
+def discard_generated_file(path: str):
+    """
+    Delete a previously generated clip.
+
+    Wire this to the response's BackgroundTask. Railway's free container has a
+    1 GB disk, and these clips are never cleaned up otherwise, so a long-running
+    demo eventually fills the volume -- which breaks TTS and logging with a
+    confusing "no space left on device".
+    """
+    try:
+        os.remove(path)
+    except OSError as e:
+        # Losing the race with another cleanup, or the file is already gone,
+        # is not worth failing a response the user already received.
+        logger.warning(f"Could not remove generated audio {path}: {e}")

@@ -13,13 +13,39 @@ logger = logging.getLogger(__name__)
 ARABIC_SCRIPT_RANGE = re.compile(r'[\u0600-\u06FF\u0750-\u077F]')
 GURMUKHI_SCRIPT_RANGE = re.compile(r'[\u0A00-\u0A7F]')  # Punjabi (Gurmukhi)
 
-# Common Roman Urdu words/patterns to help distinguish from plain English
-ROMAN_URDU_MARKERS = {
-    "hai", "hain", "ho", "kya", "kyun", "kaise", "mein", "main", "ka", "ki",
-    "ke", "se", "ko", "aur", "nahi", "nahin", "tha", "thi", "the", "aap",
-    "tum", "hum", "mujhe", "tumhe", "usko", "kar", "karo", "karna", "raha",
-    "rahi", "rahe", "wala", "wali", "bhi", "abhi", "yai", "yeh", "woh",
+# Common Roman Urdu words/patterns to help distinguish from plain English.
+#
+# Split into two tiers because several Roman Urdu words are also valid
+# English words ("the" = those, "main" = main/I). Counting those the same
+# way as unambiguous markers misclassified plain English such as
+# "The history of the Roman Empire" as Roman Urdu.
+#
+# STRONG markers are words that are never ordinary English words.
+# WEAK markers are genuine Roman Urdu words that collide with English, so
+# on their own they are not enough to call a text Roman Urdu.
+ROMAN_URDU_STRONG_MARKERS = {
+    "hai", "hain", "kya", "kyun", "kaise", "nahi", "nahin", "aap", "tume",
+    "tum", "hum", "mujhe", "tumhe", "usko", "wala", "wali", "abhi", "yai",
+    "yeh", "woh", "karna", "raha", "rahi", "rahe", "hoga", "hogi", "hota",
+    "gaya", "gayi", "chahiye", "acha", "achi", "bohot", "bohat", "zaroor",
+    "batao", "bataye", "kaisay", "sirf", "waqt", "baat",
+    "taraf", "jao", "zara", "yahan", "wahan", "dekho", "dekha", "chalo",
+    "shukriya", "jazak", "haal", "naam", "kam", "zyada", "pehle", "baad",
+    "phir", "jab", "sab", "kuch", "bhai", "yaar", "sunno", "suno", "kro",
+    "samjha", "samajh", "tumhare", "hamare", "uska", "uski", "uske", "unhone",
 }
+
+ROMAN_URDU_WEAK_MARKERS = {
+    "the", "main", "mein", "ka", "ki", "ke", "se", "ko", "ho", "kar",
+    "karo", "tha", "thi", "aur", "bhi",
+}
+
+# Kept for backwards compatibility with anything importing the old name.
+ROMAN_URDU_MARKERS = ROMAN_URDU_STRONG_MARKERS | ROMAN_URDU_WEAK_MARKERS
+
+# A weak-only signal needs both a minimum share of matched words and at
+# least one strong marker, otherwise English sentences leak into ur-roman.
+MIN_WEAK_MARKER_RATIO = 0.25
 
 SUPPORTED_LANGUAGES = {
     "ur": "Urdu",
@@ -37,9 +63,21 @@ def _is_roman_urdu(text: str) -> bool:
     words = re.findall(r'[a-zA-Z]+', text.lower())
     if not words:
         return False
-    marker_hits = sum(1 for w in words if w in ROMAN_URDU_MARKERS)
-    # If a meaningful fraction of words are known Roman Urdu markers, call it Roman Urdu
-    return (marker_hits / len(words)) >= 0.15
+
+    strong_hits = sum(1 for w in words if w in ROMAN_URDU_STRONG_MARKERS)
+    weak_hits = sum(1 for w in words if w in ROMAN_URDU_WEAK_MARKERS)
+
+    # Two or more unambiguous markers is a confident signal, even in a
+    # long sentence where the ratio stays low.
+    if strong_hits >= 2:
+        return True
+
+    # Otherwise require at least one strong marker plus a meaningful share
+    # of the sentence, so a stray "the"/"main"/"ke" can't flip English.
+    if strong_hits >= 1 and (weak_hits + strong_hits) / len(words) >= MIN_WEAK_MARKER_RATIO:
+        return True
+
+    return False
 
 
 def _detect_by_script(text: str) -> str | None:

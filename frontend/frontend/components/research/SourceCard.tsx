@@ -9,6 +9,15 @@ interface SourceCardProps {
   index: number
 }
 
+/**
+ * DOM id for a source card, so inline [n] citations can scroll to it.
+ * The backend returns ids like "s1", "s2", ... matching the citation
+ * numbers it puts in the answer text.
+ */
+export function sourceDomId(source: ResearchSource): string {
+  return `source-${source.id}`
+}
+
 export const SourceCard = forwardRef<HTMLDivElement, SourceCardProps>(function SourceCard(
   { source, index },
   ref
@@ -16,7 +25,7 @@ export const SourceCard = forwardRef<HTMLDivElement, SourceCardProps>(function S
   return (
     <div
       ref={ref}
-      id={`source-${source.id}`}
+      id={sourceDomId(source)}
       className="rounded-lg border border-border bg-card p-3 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md focus-within:ring-2 focus-within:ring-ring"
     >
       <div className="flex items-start gap-2">

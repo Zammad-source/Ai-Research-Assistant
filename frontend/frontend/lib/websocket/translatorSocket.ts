@@ -1,6 +1,5 @@
-import type { TranslatorWebSocketEvent } from "@/types/translator"
-
-const WS_BASE = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000"
+import { WS_URL } from "@/lib/constants";
+import type { TranslatorWebSocketEvent } from "@/types/translator";
 
 export type TranslatorSocketStatus = "idle" | "connecting" | "open" | "closing" | "closed" | "reconnecting" | "error"
 
@@ -48,7 +47,7 @@ export class TranslatorSocket {
   }
 
   private openSocket(roomCode: string, isHost: boolean): void {
-    const url = `${WS_BASE}/ws/translator/${roomCode}?is_host=${isHost}`
+    const url = `${WS_URL}/ws/translator/${roomCode}?is_host=${isHost}`
     this.setStatus(this.reconnectAttempts > 0 ? "reconnecting" : "connecting")
 
     try {

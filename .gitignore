@@ -1,4 +1,36 @@
-﻿backend/venv/
-__pycache__/
-*.pyc
+﻿# --- Secrets ---------------------------------------------------------------
+# Never commit real credentials. .env.example files are the templates.
 .env
+.env.*
+!.env.example
+
+# --- Python ----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# --- Node / Next.js --------------------------------------------------------
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# --- Runtime artifacts (generated, never committed) -------------------------
+# These are written by the running backend. On a deployed container they are
+# ephemeral anyway, so shipping past copies just bloats the repo.
+backend/logs/
+backend/tts_output/
+backend/chroma_store/
+backend/speech_*.mp3
+backend/test_speech.mp3
+
+# --- OS / editor -----------------------------------------------------------
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
