@@ -19,3 +19,6 @@ test_speech.mp3
 
 # Stray shell-redirect artifacts.
 curl
+.vercel
+.env*
+!.env.example

@@ -1,0 +1,14 @@
+venv/
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+logs/
+tts_output/
+.env
+.env.*
+!.env.example
+scripts/
+railway.json
+Procfile
+.git/
