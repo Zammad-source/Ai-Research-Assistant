@@ -15,14 +15,16 @@ def _file_logging_enabled() -> bool:
     """
     File logging is off unless explicitly requested.
 
-    Railway (and most containers) capture stdout and give the process an
-    ephemeral filesystem, so writing a rotating log file there burns disk for
-    logs nobody will ever read. Locally it stays on by default, which is what
-    the existing workflow expects.
+    Serverless/container platforms capture stdout and give the process an
+    ephemeral or read-only filesystem, so writing a rotating log file there
+    burns disk for logs nobody will ever read. Locally it stays on by default,
+    which is what the existing workflow expects.
     """
     flag = os.getenv("LOG_TO_FILE")
     if flag is not None:
         return flag.strip().lower() in {"1", "true", "yes", "on"}
+    if os.getenv("VERCEL"):
+        return False
     return os.getenv("RAILWAY_ENVIRONMENT") is None
 
 
@@ -31,7 +33,12 @@ def setup_logging():
     if _configured:
         return logging.getLogger()
 
-    os.makedirs(LOG_DIR, exist_ok=True)
+    try:
+        os.makedirs(LOG_DIR, exist_ok=True)
+    except OSError as e:
+        # Vercel mounts the bundle read-only, so creating logs/ raises
+        # Errno 30 at import time. Logging still works via stdout below.
+        logging.getLogger(__name__).debug("Skipping log directory: %s", e)
 
     formatter = logging.Formatter(
         "%(asctime)s | %(levelname)s | %(name)s | %(message)s"

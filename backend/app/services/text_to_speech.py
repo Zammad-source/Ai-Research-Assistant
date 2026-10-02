@@ -1,6 +1,7 @@
 import logging
 import uuid
 import os
+import tempfile
 
 from elevenlabs.client import ElevenLabs
 
@@ -18,6 +19,24 @@ TTS_MODEL = "eleven_multilingual_v2"
 OUTPUT_DIR = "tts_output"
 
 
+def _output_dir() -> str:
+    """
+    Where generated clips are written.
+
+    Local and container platforms give us a writable working directory, but
+    Vercel mounts the function bundle read-only and only allows writes under
+    /tmp. Defaulting to the temp dir there keeps TTS working instead of
+    failing with a bare "read-only file system" error. TTS_OUTPUT_DIR
+    overrides both.
+    """
+    override = os.getenv("TTS_OUTPUT_DIR")
+    if override:
+        return override
+    if os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+        return os.path.join(tempfile.gettempdir(), OUTPUT_DIR)
+    return OUTPUT_DIR
+
+
 class TextToSpeechError(AppException):
     pass
 
@@ -33,10 +52,15 @@ def generate_speech(text: str, output_path: str | None = None) -> str:
     if not text or not text.strip():
         raise TextToSpeechError("Cannot generate speech for empty text.")
 
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    output_dir = _output_dir()
+    try:
+        os.makedirs(output_dir, exist_ok=True)
+    except OSError as e:
+        logger.exception("TTS output directory %s is not writable: %s", output_dir, e)
+        raise TextToSpeechError("Could not generate speech. Please try again.")
 
     if output_path is None:
-        output_path = os.path.join(OUTPUT_DIR, f"{uuid.uuid4().hex}.mp3")
+        output_path = os.path.join(output_dir, f"{uuid.uuid4().hex}.mp3")
 
     try:
         client = _get_elevenlabs_client()

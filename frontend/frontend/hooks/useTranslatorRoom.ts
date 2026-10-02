@@ -5,7 +5,19 @@ import { TranslatorSocket } from "@/lib/websocket/translatorSocket"
 import { MockTranslatorSocket } from "@/lib/websocket/mockTranslatorSocket"
 import type { ConnectionStatus, TranslatorMessage, TranslatorWebSocketEvent } from "@/types/translator"
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_API === "true"
+/**
+ * Set NEXT_PUBLIC_TRANSLATOR_MOCK=true to run the translator rooms against the
+ * in-browser mock socket instead of the real backend.
+ *
+ * This is separate from NEXT_PUBLIC_USE_MOCK_API on purpose: research and
+ * voice work fine against a serverless backend, but only a long-lived
+ * container can hold the bidirectional WebSocket the rooms need. Vercel
+ * Functions time out and do not upgrade to WebSockets, so a Vercel-hosted
+ * backend needs this flag while the rest of the app stays real.
+ */
+const USE_MOCK =
+  process.env.NEXT_PUBLIC_TRANSLATOR_MOCK === "true" ||
+  process.env.NEXT_PUBLIC_USE_MOCK_API === "true"
 
 function createId() {
   return Math.random().toString(36).slice(2, 10)
