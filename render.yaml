@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: ai-research-assistant-api
+    runtime: python
+    plan: free
+    region: oregon
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    maxShutdownDelaySeconds: 60
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: ENVIRONMENT
+        value: production
+      - key: TRANSLATION_BACKEND
+        value: groq
+      # logs/ is an ephemeral disk on Render, so keep logs on stdout only
+      - key: LOG_TO_FILE
+        value: "false"
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "20"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      # Add your Vercel URL after the frontend is deployed, e.g.
+      # CORS_ORIGINS=https://your-app.vercel.app
+      - key: CORS_ORIGINS
+        sync: false

@@ -1,12 +1,12 @@
 # Deployment Guide
 
-Backend on **Railway**, frontend on **Vercel**, both on free tiers.
+Backend on **Render**, frontend on **Vercel**, both on free tiers.
 
 ```
-frontend/frontend   Next.js 16  ->  Vercel     (public URL)
+frontend/frontend   Next.js 16  ->  Vercel   (public URL)
         |  HTTPS + WSS
         v
-backend             FastAPI     ->  Railway    (private API)
+backend             FastAPI     ->  Render   (private API)
         |
         +-- Groq        (answers, translation, query rewriting)
         +-- Tavily      (web retrieval)
@@ -14,9 +14,16 @@ backend             FastAPI     ->  Railway    (private API)
         +-- Supabase    (chat history, optional)
 ```
 
-The backend must go first: Vercel needs the Railway URL, and Railway needs the
-Vercel origin for CORS. It is a two-way dependency, so the two steps below
-each end with a second deploy.
+Render + Vercel is the pairing to use. Railway was the original target but its
+Free plan gives you **$1 of credit per month**, which this service burns through
+in about a week, and new accounts hit a provisioning limit that blocks creating
+a second project.
+
+There is a `render.yaml` in the repo root, so the backend is one click.
+
+> The backend must be deployed first: Vercel needs the Render URL, and Render
+> needs the Vercel origin for CORS. It is a two-way dependency, so each step ends
+> with a follow-up edit.
 
 ---
 
@@ -29,7 +36,7 @@ Both platforms deploy from a Git repository, so the changes have to be pushed.
 ```bash
 git add -A
 git status          # confirm no .env or *.mp3 got staged
-git commit -m "Prepare deployment for Railway and Vercel"
+git commit -m "Prepare deployment for Render and Vercel"
 git push
 ```
 
@@ -44,13 +51,14 @@ git push
 | [ElevenLabs](https://elevenlabs.io) | Text-to-speech | Yes, limited |
 | [Supabase](https://supabase.com) | Chat history (optional) | Yes |
 
-Copy `backend/.env.example` to `backend/.env` for local development. The four
-values above are already present in your working `.env`.
+Copy `backend/.env.example` to `backend/.env` for local development. The five
+values above are already present in your working `.env`, and you will paste the
+same five into Render in Part 1.
 
 ### 3. Confirm the backend will boot before deploying
 
-This is worth doing: it reproduces the Railway container by blocking every
-heavy dependency, so it catches missing packages before a failed build does.
+This reproduces the Render container by blocking every heavy dependency, so it
+catches missing packages before a failed build does.
 
 ```bash
 cd backend
@@ -60,86 +68,84 @@ python scripts/smoke_test.py      # boots uvicorn, checks /health + CORS
 
 ---
 
-## Part 1 - Backend on Railway
+## Part 1 - Backend on Render
 
-### Create the project
+### Create the service
 
-1. Go to [railway.app](https://railway.app) and sign in.
-2. **New Project -> Deploy from GitHub repo** -> pick this repository.
-3. Railway will start building immediately. It builds the **repository root**
-   by default, which is wrong here - this is a monorepo.
+1. Go to [dashboard.render.com](https://dashboard.render.com) and sign in.
+2. **New -> Blueprint**, then pick this repository.
 
-> New accounts start on the **Free Trial** ($5 of credit, expires in 30 days).
-> After that it drops to the Free plan's $1/month, which only lasts about a week
-> for a service this size. If you need it live for a demo, switch to
-> **Hobby ($5/mo)** before you run out - see [Free tier limits](#free-tier-limits).
+   Render reads `render.yaml` from the repo root and shows a preview of what it
+   will create. Confirm the service is called `ai-research-assistant-api`.
 
-### Point Railway at the backend folder
+The blueprint already sets the parts that are easy to get wrong:
 
-1. Right-click the service -> **Settings**.
-2. Set **Root Directory** to `backend`.
+| Setting | Value | Why it matters |
+| --- | --- | --- |
+| Root Directory | `backend` | Monorepo - `requirements.txt` is not at the repo root |
+| Runtime | Python 3.11 | Matches `.python-version` |
+| Plan | `free` | 0.1 CPU, 512 MB RAM |
+| Build Command | `pip install -r requirements.txt` | |
+| Start Command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT ...` | `$PORT` is injected by Render |
+| Health Check Path | `/health` | Gates the rollout |
+| Auto-Deploy | on every commit to `main` | |
 
-   Without this Railway looks for `requirements.txt` at the repo root, does not
-   find it, and the build fails.
-3. Set **Build Method** to `Nixpacks` (the default is fine - it detects
-   `requirements.txt` and the `Procfile`).
+Prefer creating it by hand instead of via the blueprint? Same fields, plus
+**Create Web Service -> Connect repo -> Environment: Python -> Root Directory:
+`backend`**.
 
-Railway now picks up, from `backend/`:
+### Enter the environment variables
 
-| File | Purpose |
+Render prompts for every variable marked `sync: false` in the blueprint:
+
+| Variable | Where to get it |
 | --- | --- |
-| `Procfile` | `web:` start command, binds `0.0.0.0:$PORT` |
-| `railway.json` | Healthcheck at `/health`, restart policy |
-| `.python-version` | Pins Python 3.11 |
-| `requirements.txt` | Dependencies (deliberately no torch) |
-
-### Add the environment variables
-
-**Service -> Variables -> New Variable**, for each:
-
-| Variable | Example |
-| --- | --- |
-| `GROQ_API_KEY` | `gsk_...` |
-| `TAVILY_API_KEY` | `tvly_...` |
-| `ELEVENLABS_API_KEY` | `...` |
-| `SUPABASE_URL` | `https://xxxx.supabase.co` |
-| `SUPABASE_KEY` | `anon or service key` |
-| `ENVIRONMENT` | `production` |
-| `TRANSLATION_BACKEND` | `groq` |
-| `LOG_TO_FILE` | `false` |
+| `GROQ_API_KEY` | `backend/.env` |
+| `TAVILY_API_KEY` | `backend/.env` |
+| `ELEVENLABS_API_KEY` | `backend/.env` |
+| `SUPABASE_URL` | `backend/.env` |
+| `SUPABASE_KEY` | `backend/.env` |
+| `CORS_ORIGINS` | Leave blank for now, see Part 3 |
 
 All five keys are **required** - `pydantic-settings` refuses to start without
-them, by design. The last three are optional.
+them, by design.
 
-**Do not set `PORT`.** Railway injects it, and the `Procfile` reads it.
+The blueprint hardcodes the optional ones: `ENVIRONMENT=production`,
+`TRANSLATION_BACKEND=groq`, `LOG_TO_FILE=false`, `RATE_LIMIT_PER_MINUTE=20`.
 
-### Generate a domain
+> `LOG_TO_FILE=false` matters on Render. The service filesystem is ephemeral, so
+> rotating log files there just burn disk that never gets read. Render captures
+> stdout anyway, and `logging_config.py` always writes there.
 
-**Service -> Networking -> Generate Domain** gives you something like
-`omnivoise-backend.up.railway.app`. Save it - the frontend needs it.
+**Do not set `PORT`.** Render injects it.
 
-### Verify
+Click **Apply**. The first build takes a few minutes because Python and every
+dependency are installed from scratch.
+
+### Get the URL and verify
+
+Render assigns a subdomain like
+`https://ai-research-assistant-api.onrender.com`. It appears at the top of the
+service page.
 
 ```bash
-curl https://omnivoise-backend.up.railway.app/health
+curl https://ai-research-assistant-api.onrender.com/health
 # {"status":"ok","environment":"production"}
 ```
 
-That endpoint is also Railway's healthcheck target, so a passing response
-means the platform considers the deploy healthy.
+**If the first curl hangs for a minute and then returns, that is normal.**
+Free services sleep after 15 minutes without traffic and take roughly a minute
+to wake. The wake is not a failure.
 
 Optionally check CORS with the origin you will use in Part 2:
 
 ```bash
-curl -i -X OPTIONS https://omnivoise-backend.up.railway.app/api/research/query \
-  -H "Origin: https://omnivoice-frontend.vercel.app" \
+curl -i -X OPTIONS https://ai-research-assistant-api.onrender.com/api/research/query \
+  -H "Origin: https://your-app.vercel.app" \
   -H "Access-Control-Request-Method: POST"
 ```
 
-Expect `access-control-allow-origin: https://omnivoice-frontend.vercel.app`.
-
-**Leave CORS open for now.** It defaults to allowing any origin so Part 2 can
-connect immediately. Lock it down at the end.
+Expect `access-control-allow-origin: https://your-app.vercel.app`.
 
 ---
 
@@ -162,14 +168,14 @@ connect immediately. Lock it down at the end.
    | Build Command | `npm run build` |
    | Output Directory | `.next` |
 
-### Add the environment variable
+### Add the environment variables
 
 **Settings -> Environment Variables -> Add**, for **Production** (and
 Previews, if you want previews to work):
 
 | Variable | Value |
 | --- | --- |
-| `NEXT_PUBLIC_API_URL` | `https://omnivoise-backend.up.railway.app` |
+| `NEXT_PUBLIC_API_URL` | `https://ai-research-assistant-api.onrender.com` |
 | `NEXT_PUBLIC_USE_MOCK_API` | `false` |
 
 No trailing slash on the URL - endpoints are appended as
@@ -186,28 +192,28 @@ Two things to know:
 
 ### Deploy
 
-Click **Deploy**. When it succeeds you get
-`https://omnivoice-frontend.vercel.app`.
+Click **Deploy**. When it succeeds you get `https://your-app.vercel.app`.
 
 ---
 
 ## Part 3 - Lock down CORS
 
-Now that the Vercel URL exists, tell Railway about it.
+Now that the Vercel URL exists, tell Render about it.
 
-On Railway, add:
+**Service -> Environment**, set:
 
 ```
-CORS_ORIGINS=https://omnivoice-frontend.vercel.app
+CORS_ORIGINS=https://your-app.vercel.app
 ```
 
-Then **redeploy** (adding a variable does not restart a running service).
+Then **Save Changes** and trigger a deploy (**Manual Deploy -> Deploy latest
+commit**) - adding a variable does not restart a running service.
 
 Vercel preview deployments get random URLs. To allow those too, list several
 comma-separated origins:
 
 ```
-CORS_ORIGINS=https://omnivoice-frontend.vercel.app,https://omnivoice-frontend-git-main-yourname.vercel.app
+CORS_ORIGINS=https://your-app.vercel.app,https://your-app-git-main-yourname.vercel.app
 ```
 
 Without `CORS_ORIGINS` the API allows any origin, which is convenient and
@@ -220,13 +226,13 @@ and the browser blocks them.
 
 | # | Check | Expected |
 | --- | --- | --- |
-| 1 | `curl <railway-url>/health` | `{"status":"ok",...}` |
+| 1 | `curl <render-url>/health` | `{"status":"ok",...}` |
 | 2 | Load the Vercel URL | Home page renders, no console errors |
 | 3 | Ask a research question | Answer with clickable `[n]` citations, sources listed |
 | 4 | Click a citation | Scrolls to and highlights the source card |
 | 5 | Open Translator, two browsers, same room | Messages appear translated |
 | 6 | Press voice/TTS playback | Audio plays |
-| 7 | Check Railway logs | No `sentence-transformers unavailable` spam, no tracebacks |
+| 7 | Check Render logs | No `sentence-transformers unavailable` spam, no tracebacks |
 
 Item 5 is the one that catches a misconfigured WebSocket, and item 3 is what
 proves the whole chain works end to end.
@@ -234,7 +240,7 @@ proves the whole chain works end to end.
 ### Rate limits
 
 These are per client IP, counted in memory (so they reset whenever the service
-restarts):
+restarts or wakes from sleep):
 
 | Endpoint | Limit | Why |
 | --- | --- | --- |
@@ -251,46 +257,39 @@ If a demo ever gets blocked, raise the limit in
 `backend/app/routes/frontend_api.py` or drop slowapi's default HTML error page
 in favour of a JSON body the frontend already knows how to read.
 
-Note the limits are **in-memory, per container**. They do not aggregate across
-replicas - fine on the Free plan (1 replica), but if you ever scale out, raise
+The limits are **in-memory, per instance**. They do not aggregate across
+replicas - fine on the Free plan (1 instance), but if you ever scale out, raise
 the limits or move to a shared store.
 
 ---
 
 ## Free tier limits
 
-**Railway** does *not* have a comfortable permanent free tier. Per
-[docs.railway.com/pricing/plans](https://docs.railway.com/pricing/plans):
+**Render** Free, per [docs.render.com/pricing](https://docs.render.com/pricing):
 
-| Plan | Cost | Credit | RAM | Ephemeral disk | Replicas |
+| Plan | Cost | CPU | RAM | Sleeps? | Instance hours |
 | --- | --- | --- | --- | --- | --- |
-| Free Trial | $0 | **$5 once**, expires in 30 days | 1 GB | 1 GB | 2 |
-| **Free** | $0/mo | **$1 / month**, no rollover | **0.5 GB** | **1 GB** | 1 |
-| Hobby | $5/mo | $5 / month included | 48 GB | 100 GB | 6 |
+| **Free** | $0 | 0.1 | 512 MB | Yes, after 15 min idle | 750 / month |
 
-The catch is the **$1/month Free credit**. A small idle FastAPI costs roughly
-$0.15-0.20/day (RAM plus CPU, metered per second), so **$1 runs out in about a
-week**. Once credit is exhausted the service stops responding.
+No credit balance to run out, which is the main reason this is better than
+Railway Free for anything long-lived. The tradeoffs are a cold start and a
+hard RAM ceiling:
 
-So realistically:
-
-- **For a graded demo or hackathon pitch, pick Hobby ($5/mo).** The $5 monthly
-  credit comfortably covers this app, and you get 48 GB RAM instead of 0.5 GB.
-- **If you use the Free plan**, treat the deployment as a timed preview and
-  re-ups before you need it live.
-
-The 0.5 GB RAM ceiling is also the reason `requirements.txt` excludes torch and
-`sentence-transformers` - torch alone is roughly 800 MB, so including it would
-fail to start rather than merely run slowly.
-
-The 1 GB ephemeral disk is the second constraint, which is why generated TTS
-clips are now deleted in a `BackgroundTask` after each response instead of
-piling up in `tts_output/`.
+- **Cold start.** After 15 minutes idle the instance stops and the next request
+  gets Render's loading page for roughly a minute. During a demo, hit
+  `/health` a minute early to pre-warm it.
+- **512 MB RAM.** This is why `requirements.txt` excludes torch and
+  `sentence-transformers` - torch alone is roughly 800 MB, so including it would
+  fail to start rather than merely run slowly.
 
 | Heavy thing | What runs instead |
 | --- | --- |
 | Local NLLB translation model | Groq (`TRANSLATION_BACKEND=groq`) |
 | `sentence-transformers` embeddings | Pure-Python lexical ranking in `retrieval.py` |
+
+WebSockets work on the Free plan, so the Translator room feature is fine. Note
+that an idle WebSocket with no incoming messages does not keep the service
+awake.
 
 **Vercel** Hobby is genuinely free with no usage cap for this kind of static app.
 
@@ -304,12 +303,18 @@ Expect these to be your actual limits, not the platform's:
 
 ## Troubleshooting
 
-**Railway build fails on `requirements.txt` not found**
-Root Directory is not set to `backend`. Service -> Settings -> Root Directory.
+**Build fails with `requirements.txt not found`**
+Root Directory is not set to `backend`. Blueprints get this from
+`rootDir: backend`; if you built the service by hand, set it in
+**Settings -> Root Directory**.
 
-**Backend deploys, every request returns 500**
-A required variable is missing. `Service -> Variables`. The first log line names
-the offending setting. `scripts/verify_build.py` catches this locally.
+**Deploy succeeds, every request returns 500**
+A required variable is missing. **Service -> Environment**. The first log line
+names the offending setting. `scripts/verify_build.py` catches this locally.
+
+**Service stays in "Deploying" forever**
+`/health` is not responding, so Render rolls back. Usually a missing key again,
+or the health check firing while Groq is unreachable at import time.
 
 **`ModuleNotFoundError: numpy` or `sentence_transformers`**
 Something reintroduced a hard dependency on the heavy packages.
@@ -322,7 +327,7 @@ slash. Remember it is inlined at **build** time: after changing it, redeploy
 (Vercel: Deployments -> ... -> Redeploy, or push an empty commit).
 
 **Research requests fail with a CORS error**
-`CORS_ORIGINS` on Railway does not list the exact frontend origin, including
+`CORS_ORIGINS` on Render does not list the exact frontend origin, including
 `https://` and the subdomain. Vercel preview URLs differ per branch, so either
 add them or leave `CORS_ORIGINS` unset while iterating.
 
@@ -333,23 +338,18 @@ let it derive from the API URL. Both `/ws/translator/{room_id}` and the legacy
 `/translator/ws/{room_id}` are served, so the path is not the problem.
 
 **First request is very slow, later ones fast**
-Tavily results are cached for 5 minutes per query. Groq translation has no
-cold start now that there is no local model, but the first call still pays
-network latency.
+Either a cold start (see [Free tier limits](#free-tier-limits)) or an uncached
+Tavily result - results are cached for 5 minutes per query. Groq translation
+has no warm-up cost now that there is no local model, but the first call still
+pays network latency.
 
 **Frontend shows "Server error: 429" during a demo**
 You hit a rate limit. See [Rate limits](#rate-limits). Research is capped at
 5 requests per minute per IP.
 
-**Railway service stops responding after a few days**
-The Free plan only includes $1 of monthly credit, which this app burns through
-in about a week. Upgrade to Hobby ($5/mo) or re-ups before a demo.
-
-**`No space left on device` / disk fills up**
-Free-tier containers have 1 GB of ephemeral storage. Generated TTS clips are
-now deleted automatically after each response, so this usually means something
-else is writing to disk - check whether `LOG_TO_FILE` was left on and whether
-old files are still sitting in `tts_output/`.
+**Render service stops responding between demo sessions**
+Expected. Free instances sleep after 15 minutes idle. Send one request to
+`/health` about a minute before you need it.
 
 **Local dev broke after these changes**
 `backend/.env` still needs all five keys, and
